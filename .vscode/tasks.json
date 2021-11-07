@@ -1,0 +1,21 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "type": "npm",
+            "script": "dev:build",
+            "group": "build",
+            "problemMatcher": [],
+            "label": "Dev Build",
+            "detail": "npx tsc -w"
+        },
+        {
+            "type": "npm",
+            "script": "dev:start",
+            "group": "build",
+            "problemMatcher": [],
+            "label": "Dev Start",
+            "detail": "supervisor -w build build/server.js"
+        }
+    ]
+}
