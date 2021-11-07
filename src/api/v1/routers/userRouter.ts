@@ -18,7 +18,7 @@ router.post('/createPost', auth, async (req: Request, res: Response) => {
         });
     }
 
-    if (userId != req.user) {
+    if (userId != req.userId) {
         return res.status(401).json({
             errorMessage: 'Hozzáférés megtagadva.'
         });
@@ -54,7 +54,7 @@ router.post('/deletePost', auth, async (req: Request, res: Response) => {
         });
     }
 
-    if (post.userId != req.user) {
+    if (post.userId != req.userId) {
         return res.status(401).json({
             errorMessage: 'Hozzáférés megtagadva.'
         });
@@ -82,7 +82,7 @@ router.post('/changePassword', auth, async (req: Request, res: Response) => {
         });
     }
 
-    const existingUser = await User.findOne({ _id: req.user });
+    const existingUser = await User.findOne({ _id: req.userId });
 
     const passwordCorrect = await bcrypt.compare(verifyPass, existingUser.passwordHash);
     if (!passwordCorrect) {
@@ -96,7 +96,7 @@ router.post('/changePassword', auth, async (req: Request, res: Response) => {
     const newPassHash = await bcrypt.hash(newPass, salt);
 
     /** Jelszó megváltoztatása */
-    await User.updateOne({ _id: req.user }, { passwordHash: newPassHash });
+    await User.updateOne({ _id: req.userId }, { passwordHash: newPassHash });
 
     return res.status(200).send();
 });
@@ -119,7 +119,7 @@ router.post('/changeEmail', auth, async (req: Request, res: Response) => {
         });
     }
 
-    const existingUser = await User.findOne({ _id: req.user });
+    const existingUser = await User.findOne({ _id: req.userId });
 
     const passwordCorrect = await bcrypt.compare(verifyPass, existingUser.passwordHash);
     if (!passwordCorrect) {
@@ -129,7 +129,7 @@ router.post('/changeEmail', auth, async (req: Request, res: Response) => {
     }
 
     /** Email megváltoztatása */
-    await User.updateOne({ _id: req.user }, { email: newEmail });
+    await User.updateOne({ _id: req.userId }, { email: newEmail });
 
     return res.status(200).send();
 });

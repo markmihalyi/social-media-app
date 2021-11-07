@@ -12,7 +12,7 @@ function auth(req: Request, res: Response, next: NextFunction): void | Response<
             });
 
         const verified = jwt.verify(token, config.jwtSecret);
-        req.user = (<IToken>verified).user;
+        req.userId = (<IToken>verified).user;
 
         return next();
     } catch (err) {
