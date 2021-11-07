@@ -1,4 +1,4 @@
-# Things To Do
+# Things to do
 
 ### Todo
 
