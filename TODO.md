@@ -6,6 +6,8 @@
 
 ### In Progress
 
+-   currently nothing
+
 ### Done ✓
 
 -   [x] React to posts feature (sendReaction, undoReaction, getReaction)
