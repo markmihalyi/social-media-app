@@ -4,6 +4,7 @@ import User from '../models/userModel';
 import Post from '../models/postModel';
 import bcrypt from 'bcryptjs';
 import validator from 'email-validator';
+import { isValidObjectId, Types } from 'mongoose';
 
 const router = Router();
 
@@ -11,21 +12,56 @@ router.post('/createPost', auth, async (req: Request, res: Response) => {
     const { userId, text } = req.body;
 
     /** Adatok ellenőrzése */
-    if (userId != req.user) {
-        return res.status(401).json({
-            errorMessage: 'Hozzáférés megtagadva.'
-        });
-    }
-
     if (!userId || !text) {
         return res.status(400).json({
             errorMessage: 'Nem töltöttél ki minden mezőt.'
         });
     }
 
+    if (userId != req.user) {
+        return res.status(401).json({
+            errorMessage: 'Hozzáférés megtagadva.'
+        });
+    }
+
     /** Poszt létrehozása */
     const newPost = new Post({ userId, text });
     await newPost.save();
+
+    return res.status(200).send();
+});
+
+router.post('/deletePost', auth, async (req: Request, res: Response) => {
+    const postId = req.body.postId;
+
+    /** Adatok ellenőrzése */
+    if (!postId) {
+        return res.status(400).json({
+            errorMessage: 'Nem töltöttél ki minden mezőt.'
+        });
+    }
+
+    if (!isValidObjectId(postId)) {
+        return res.status(400).json({
+            errorMessage: 'A megadott azonosító nem érvényes.'
+        });
+    }
+
+    const post = await Post.findOne({ _id: new Types.ObjectId(postId) });
+    if (!post) {
+        return res.status(400).json({
+            errorMessage: 'Nem létezik poszt ilyen azonosítóval.'
+        });
+    }
+
+    if (post.userId != req.user) {
+        return res.status(401).json({
+            errorMessage: 'Hozzáférés megtagadva.'
+        });
+    }
+
+    /** Poszt törlése */
+    await Post.deleteOne({ _id: new Types.ObjectId(postId) });
 
     return res.status(200).send();
 });
