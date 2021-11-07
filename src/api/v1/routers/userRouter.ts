@@ -31,7 +31,7 @@ router.post('/createPost', auth, async (req: Request, res: Response) => {
     return res.status(200).send();
 });
 
-router.post('/deletePost', auth, async (req: Request, res: Response) => {
+router.delete('/deletePost', auth, async (req: Request, res: Response) => {
     const postId = req.body.postId;
 
     /** Adatok ellenőrzése */
