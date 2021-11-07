@@ -1,5 +1,3 @@
-# Things to do
-
 ### Todo
 
 -   [ ] React to comments feature
