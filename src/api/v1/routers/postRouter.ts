@@ -4,7 +4,7 @@ import Post from '../models/postModel';
 const router = Router();
 
 router.get('/getPosts', async (req: Request, res: Response) => {
-    Post.find({}, function (err, posts) {
+    Post.find({}, (err, posts) => {
         res.send(posts);
     });
 });
