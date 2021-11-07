@@ -41,6 +41,7 @@ if (config.httpLogging == 'true') {
 /** API útvonalak beállítása */
 app.use('/auth', require('./api/v1/routers/authRouter'));
 app.use('/user', require('./api/v1/routers/userRouter'));
+app.use('/post', require('./api/v1/routers/postRouter'));
 
 app.get('*', (req: Request, res: Response) => {
     res.status(404).json({

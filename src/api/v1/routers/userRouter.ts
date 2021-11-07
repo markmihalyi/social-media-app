@@ -1,10 +1,34 @@
-import { Router, Request, Response, NextFunction } from 'express';
+import { Router, Request, Response } from 'express';
 import auth from '../middlewares/auth';
 import User from '../models/userModel';
+import Post from '../models/postModel';
 import bcrypt from 'bcryptjs';
 import validator from 'email-validator';
 
 const router = Router();
+
+router.post('/createPost', auth, async (req: Request, res: Response) => {
+    const { userId, text } = req.body;
+
+    /** Adatok ellenőrzése */
+    if (userId != req.user) {
+        return res.status(401).json({
+            errorMessage: 'Hozzáférés megtagadva.'
+        });
+    }
+
+    if (!userId || !text) {
+        return res.status(400).json({
+            errorMessage: 'Nem töltöttél ki minden mezőt.'
+        });
+    }
+
+    /** Poszt létrehozása */
+    const newPost = new Post({ userId, text });
+    await newPost.save();
+
+    return res.status(200).send();
+});
 
 router.post('/changePassword', auth, async (req: Request, res: Response) => {
     const { verifyPass, newPass, newPassVerify } = req.body;
