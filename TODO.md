@@ -1,10 +1,10 @@
+# Things To Do
+
 ### Todo
 
 -   [ ] React to comments feature
 
 ### In Progress
-
--   [ ]
 
 ### Done ✓
 
