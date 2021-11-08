@@ -1,6 +1,5 @@
 ### Todo
 
--   [ ] React to comments feature
 -   [ ] Friend system
 
 ### In Progress
