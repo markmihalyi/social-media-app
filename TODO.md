@@ -4,7 +4,11 @@
 
 ### In Progress
 
--   [ ] Friend system
+-   Friend system:
+    - [x] Get a user's friend list (getFriends)
+    - [x] Send friend request to a user (addFriend)
+    - [ ] Accept friend request (acceptFriend)
+    - [ ] Deny friend request (denyFriend)
 
 ### Done ✓
 
