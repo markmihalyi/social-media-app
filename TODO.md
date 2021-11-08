@@ -1,10 +1,10 @@
 ### Todo
 
--   [ ] Friend system
+-   [ ] ...
 
 ### In Progress
 
--   [ ] ...
+-   [ ] Friend system
 
 ### Done ✓
 
