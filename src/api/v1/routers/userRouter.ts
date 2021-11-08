@@ -7,13 +7,128 @@ import validator from 'email-validator';
 import { isValidObjectId, Types } from 'mongoose';
 import { IComment } from '../interfaces/commentInterface';
 import { IReaction } from '../interfaces/reactionInterface';
+import { IFriend } from '../interfaces/friendInterface';
 import axios from 'axios';
 import config from '../../../config/config';
 import logger from '../../../config/logger';
+import moment from 'moment';
 
 const router = Router();
 
 const NAMESPACE = 'USER';
+
+/**********
+ * FRIEND *
+ *********/
+
+// Jelenleg nem kell bejelentkezve lenni a barátlista lekérdezéséhez.
+// Ha ezen változtatnál, akkor írd ide az auth middleware-t.
+router.get('/getFriends', async (req: Request, res: Response) => {
+    const { userId } = req.query;
+
+    /** Adatok ellenőrzése */
+    if (!userId) {
+        return res.status(400).json({
+            errorMessage: 'Érvénytelen kérés.'
+        });
+    }
+
+    const user = await User.findOne({ _id: userId });
+    if (!user) {
+        return res.status(400).json({
+            errorMessage: 'Nem létezik fiók ilyen azonosítóval.'
+        });
+    }
+
+    /** Barátlista visszaadása válaszként */
+    return res.status(200).json({
+        friends: user.friends
+    });
+});
+
+router.post('/addFriend', auth, async (req: Request, res: Response) => {
+    const myUserId = req.user.toString();
+    const { userId } = req.body;
+
+    /** Adatok ellenőrzése */
+    if (!userId) {
+        return res.status(400).json({
+            errorMessage: 'Érvénytelen kérés.'
+        });
+    }
+
+    if (!isValidObjectId(userId)) {
+        return res.status(400).json({
+            errorMessage: 'A megadott fiók azonosító nem érvényes.'
+        });
+    }
+
+    if (userId == myUserId) {
+        return res.status(400).json({
+            errorMessage: 'Magadat nem jelölheted meg ismerősnek. :('
+        });
+    }
+
+    const user = await User.findOne({ _id: myUserId });
+    if (!user) {
+        return res.status(401).json({
+            errorMessage: 'Hozzáférés megtagadva.'
+        });
+    }
+
+    const targetUser = await User.findOne({ _id: userId });
+    if (!targetUser) {
+        return res.status(400).json({
+            errorMessage: 'Nem létezik fiók ilyen azonosítóval.'
+        });
+    }
+
+    const friend: IFriend = {
+        userId: userId,
+        type: 'pending'
+    };
+
+    const pendingFriends: Array<IFriend> = user.friends.pending;
+    const approvedFriends: Array<IFriend> = user.friends.approved;
+
+    let alreadySentFriendRequest = false;
+    let alreadyFriend = false;
+    pendingFriends.forEach((friend) => {
+        if (friend.userId == userId) {
+            alreadySentFriendRequest = true;
+        }
+    });
+    approvedFriends.forEach((friend) => {
+        if (friend.userId == userId) {
+            alreadyFriend = true;
+        }
+    });
+
+    if (alreadySentFriendRequest) {
+        return res.status(409).json({
+            errorMessage: 'Már küldtél barátkérelmet ennek a személynek.'
+        });
+    }
+
+    if (alreadyFriend) {
+        return res.status(409).json({
+            errorMessage: 'Ez a személy már az ismerősöd.'
+        });
+    }
+
+    /** Barát hozzáadása */
+
+    pendingFriends.push(friend);
+
+    const friends = {
+        pending: pendingFriends,
+        approved: approvedFriends
+    };
+
+    await user.updateOne({ friends: friends });
+
+    return res.status(200).send();
+});
 
 /************
  * REACTION *
@@ -26,7 +141,7 @@ router.get('/getReaction', auth, async (req: Request, res: Response) => {
     /** Adatok ellenőrzése */
     if (!postId) {
         return res.status(400).json({
-            errorMessage: 'Nem töltöttél ki minden mezőt.'
+            errorMessage: 'Érvénytelen kérés.'
         });
     }
 
@@ -154,7 +269,7 @@ router.delete('/undoReaction', auth, async (req: Request, res: Response) => {
     /** Adatok ellenőrzése */
     if (!postId) {
         return res.status(400).json({
-            errorMessage: 'Nem töltöttél ki minden mezőt.'
+            errorMessage: 'Érvénytelen kérés.'
         });
     }
 
@@ -274,7 +389,7 @@ router.delete('/deleteComment', auth, async (req: Request, res: Response) => {
     /** Adatok ellenőrzése */
     if (!postId || !commentId) {
         return res.status(400).json({
-            errorMessage: 'Nem töltöttél ki minden mezőt.'
+            errorMessage: 'Érvénytelen kérés.'
         });
     }
 
@@ -361,7 +476,7 @@ router.delete('/deletePost', auth, async (req: Request, res: Response) => {
     /** Adatok ellenőrzése */
     if (!postId) {
         return res.status(400).json({
-            errorMessage: 'Nem töltöttél ki minden mezőt.'
+            errorMessage: 'Érvénytelen kérés.'
         });
     }
 
