@@ -268,6 +268,7 @@ router.put('/newComment', auth, async (req: Request, res: Response) => {
 });
 
 router.delete('/deleteComment', auth, async (req: Request, res: Response) => {
+    const userId = req.user.toString();
     const { postId, commentId } = req.body;
 
     /** Adatok ellenőrzése */
@@ -298,15 +299,22 @@ router.delete('/deleteComment', auth, async (req: Request, res: Response) => {
 
     const comments: Array<IComment> = post.comments;
 
-    let commentExists = false;
+    let commentUserId;
     comments.forEach((comment: IComment) => {
         if (comment._id.toString() == commentId) {
-            commentExists = true;
+            commentUserId = comment.userId;
         }
     });
-    if (!commentExists) {
+
+    if (!commentUserId) {
         return res.status(400).json({
             errorMessage: 'Nem létezik hozzászólás ilyen azonosítóval.'
+        });
+    }
+
+    if (commentUserId != userId) {
+        return res.status(401).json({
+            errorMessage: 'Hozzáférés megtagadva.'
         });
     }
 
@@ -347,6 +355,7 @@ router.post('/createPost', auth, async (req: Request, res: Response) => {
 });
 
 router.delete('/deletePost', auth, async (req: Request, res: Response) => {
+    const userId = req.user.toString();
     const { postId } = req.body;
 
     /** Adatok ellenőrzése */
@@ -366,6 +375,12 @@ router.delete('/deletePost', auth, async (req: Request, res: Response) => {
     if (!post) {
         return res.status(400).json({
             errorMessage: 'Nem létezik poszt ilyen azonosítóval.'
+        });
+    }
+
+    if (post.userId != userId) {
+        return res.status(401).json({
+            errorMessage: 'Hozzáférés megtagadva.'
         });
     }
 
