@@ -47,59 +47,61 @@ router.get('/getFriends', async (req: Request, res: Response) => {
 });
 
 router.post('/addFriend', auth, async (req: Request, res: Response) => {
-    const myUserId = req.user.toString();
-    const { userId } = req.body;
+    const currentUserId = req.user.toString();
+    const targetUserId = req.body.userId;
 
     /** Adatok ellenőrzése */
-    if (!userId) {
+    if (!targetUserId) {
         return res.status(400).json({
             errorMessage: 'Érvénytelen kérés.'
         });
     }
 
-    if (!isValidObjectId(userId)) {
+    if (!isValidObjectId(targetUserId)) {
         return res.status(400).json({
             errorMessage: 'A megadott fiók azonosító nem érvényes.'
         });
     }
 
-    if (userId == myUserId) {
+    if (targetUserId == currentUserId) {
         return res.status(400).json({
             errorMessage: 'Magadat nem jelölheted meg ismerősnek. :('
         });
     }
 
-    const user = await User.findOne({ _id: myUserId });
+    const user = await User.findOne({ _id: currentUserId });
     if (!user) {
         return res.status(401).json({
             errorMessage: 'Hozzáférés megtagadva.'
         });
     }
 
-    const targetUser = await User.findOne({ _id: userId });
+    const targetUser = await User.findOne({ _id: targetUserId });
     if (!targetUser) {
         return res.status(400).json({
             errorMessage: 'Nem létezik fiók ilyen azonosítóval.'
         });
     }
 
-    const friend: IFriend = {
-        userId: userId,
-        type: 'pending'
-    };
+    /*********************/
+    /** Barát hozzáadása */
+    /*********************/
 
-    const pendingFriends: Array<IFriend> = user.friends.pending;
-    const approvedFriends: Array<IFriend> = user.friends.approved;
+    /** Küldő fél */
+    /** (CU = currentUser) */
+
+    const pendingFriendsCU: Array<IFriend> = user.friends.pending;
+    const approvedFriendsCU: Array<IFriend> = user.friends.approved;
 
     let alreadySentFriendRequest = false;
     let alreadyFriend = false;
-    pendingFriends.forEach((friend) => {
-        if (friend.userId == userId) {
+    pendingFriendsCU.forEach((friend) => {
+        if (friend.userId == targetUserId) {
             alreadySentFriendRequest = true;
         }
     });
-    approvedFriends.forEach((friend) => {
-        if (friend.userId == userId) {
+    approvedFriendsCU.forEach((friend) => {
+        if (friend.userId == targetUserId) {
             alreadyFriend = true;
         }
     });
@@ -116,16 +118,40 @@ router.post('/addFriend', auth, async (req: Request, res: Response) => {
         });
     }
 
-    /** Barát hozzáadása */
-
-    pendingFriends.push(friend);
-
-    const friends = {
-        pending: pendingFriends,
-        approved: approvedFriends
+    const CUFriend: IFriend = {
+        userId: targetUserId,
+        type: 'pending'
     };
 
-    await user.updateOne({ friends: friends });
+    pendingFriendsCU.push(CUFriend);
+
+    const friendsCurrent = {
+        pending: pendingFriendsCU,
+        approved: approvedFriendsCU
+    };
+
+    /** Fogadó fél */
+    /** (TU = targetUser) */
+
+    const pendingFriendsTU: Array<IFriend> = targetUser.friends.pending;
+    const approvedFriendsTU: Array<IFriend> = targetUser.friends.approved;
+
+    const TUFriend: IFriend = {
+        userId: currentUserId,
+        type: 'pending'
+    };
+
+    pendingFriendsTU.push(TUFriend);
+
+    const friendsTarget = {
+        pending: pendingFriendsTU,
+        approved: approvedFriendsTU
+    };
+
+    /** Adatok mentése az adatbázisba */
+
+    await user.updateOne({ friends: friendsCurrent });
+    await targetUser.updateOne({ friends: friendsTarget });
 
     return res.status(200).send();
 });
