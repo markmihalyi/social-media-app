@@ -4,7 +4,8 @@
     "scripts": {
         "dev:build": "npx tsc -w",
         "dev:start": "supervisor -w build build/server.js",
-        "start": "npx tsc && node build/server.js"
+        "build": "npx tsc",
+        "start": "node build/server.js"
     },
     "dependencies": {
         "axios": "^0.24.0",
