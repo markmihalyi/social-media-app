@@ -21,15 +21,20 @@ const NAMESPACE = 'USER';
  * FRIEND *
  *********/
 
-// Jelenleg nem kell bejelentkezve lenni a barátlista lekérdezéséhez.
-// Ha ezen változtatnál, akkor írd ide az auth middleware-t.
-router.get('/getFriends', async (req: Request, res: Response) => {
-    const { userId } = req.query;
+// * Kizárólag tesztelésre van, normális működésnél ki kell commentelni.
+router.get('/friend/debug-list/:userId', async (req: Request, res: Response) => {
+    const { userId } = req.params;
 
     /** Adatok ellenőrzése */
     if (!userId) {
         return res.status(400).json({
             errorMessage: 'Érvénytelen kérés.'
+        });
+    }
+
+    if (!isValidObjectId(userId)) {
+        return res.status(400).json({
+            errorMessage: 'A megadott fiók azonosító nem érvényes.'
         });
     }
 
@@ -46,7 +51,36 @@ router.get('/getFriends', async (req: Request, res: Response) => {
     });
 });
 
-router.post('/addFriend', auth, async (req: Request, res: Response) => {
+router.get('/friend/list/:userId', async (req: Request, res: Response) => {
+    const { userId } = req.params;
+
+    /** Adatok ellenőrzése */
+    if (!userId) {
+        return res.status(400).json({
+            errorMessage: 'Érvénytelen kérés.'
+        });
+    }
+
+    if (!isValidObjectId(userId)) {
+        return res.status(400).json({
+            errorMessage: 'A megadott fiók azonosító nem érvényes.'
+        });
+    }
+
+    const user = await User.findOne({ _id: userId });
+    if (!user) {
+        return res.status(400).json({
+            errorMessage: 'Nem létezik fiók ilyen azonosítóval.'
+        });
+    }
+
+    /** Barátlista visszaadása válaszként */
+    return res.status(200).json({
+        friends: user.friends.accepted
+    });
+});
+
+router.post('/friend/request', auth, async (req: Request, res: Response) => {
     const currentUserId = req.user.toString();
     const targetUserId = req.body.userId;
 
@@ -156,7 +190,9 @@ router.post('/addFriend', auth, async (req: Request, res: Response) => {
     return res.status(200).send();
 });
 
-router.patch('/acceptFriend', auth, async (req: Request, res: Response) => {
+router.delete('/friend/request', async (req: Request, res: Response) => {});
+
+router.put('/friend/accept', auth, async (req: Request, res: Response) => {
     const currentUserId = req.user.toString();
     const { senderUserId } = req.body;
 
@@ -261,6 +297,10 @@ router.patch('/acceptFriend', auth, async (req: Request, res: Response) => {
     await senderUser.updateOne({ friends: friendsSender });
 
     return res.status(200).send();
+});
+
+router.delete('/friend/decline/:id', async (req: Request, res: Response) => {
+    const senderUserId = req.params.id;
 });
 
 /************
