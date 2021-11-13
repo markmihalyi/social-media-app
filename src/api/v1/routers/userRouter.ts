@@ -1,4 +1,4 @@
-import { Router, Request, Response, NextFunction } from 'express';
+import { Router, Request, Response, NextFunction, response } from 'express';
 import auth from '../middlewares/auth';
 import User from '../models/userModel';
 import Post from '../models/postModel';
@@ -83,15 +83,12 @@ router.post('/addFriend', auth, async (req: Request, res: Response) => {
         });
     }
 
-    /*********************/
-    /** Barát hozzáadása */
-    /*********************/
-
     /** Küldő fél */
     /** (CU = currentUser) */
 
+    const sentRequestsCU: Array<IFriend> = user.friends.sentRequests;
     const pendingFriendsCU: Array<IFriend> = user.friends.pending;
-    const approvedFriendsCU: Array<IFriend> = user.friends.approved;
+    const acceptedFriendsCU: Array<IFriend> = user.friends.accepted;
 
     let alreadySentFriendRequest = false;
     let alreadyFriend = false;
@@ -100,7 +97,7 @@ router.post('/addFriend', auth, async (req: Request, res: Response) => {
             alreadySentFriendRequest = true;
         }
     });
-    approvedFriendsCU.forEach((friend) => {
+    acceptedFriendsCU.forEach((friend) => {
         if (friend.userId == targetUserId) {
             alreadyFriend = true;
         }
@@ -108,7 +105,7 @@ router.post('/addFriend', auth, async (req: Request, res: Response) => {
 
     if (alreadySentFriendRequest) {
         return res.status(409).json({
-            errorMessage: 'Már küldtél barátkérelmet ennek a személynek.'
+            errorMessage: 'Már van folyamatban lévő barátkérelem.'
         });
     }
 
@@ -120,38 +117,148 @@ router.post('/addFriend', auth, async (req: Request, res: Response) => {
 
     const CUFriend: IFriend = {
         userId: targetUserId,
-        type: 'pending'
+        requestSent: moment().format()
     };
 
-    pendingFriendsCU.push(CUFriend);
+    sentRequestsCU.push(CUFriend);
 
     const friendsCurrent = {
+        sentRequests: sentRequestsCU,
         pending: pendingFriendsCU,
-        approved: approvedFriendsCU
+        accepted: acceptedFriendsCU
     };
 
     /** Fogadó fél */
     /** (TU = targetUser) */
 
+    const sentRequestsTU: Array<IFriend> = targetUser.friends.sentRequests;
     const pendingFriendsTU: Array<IFriend> = targetUser.friends.pending;
-    const approvedFriendsTU: Array<IFriend> = targetUser.friends.approved;
+    const acceptedFriendsTU: Array<IFriend> = targetUser.friends.accepted;
 
     const TUFriend: IFriend = {
         userId: currentUserId,
-        type: 'pending'
+        requestSent: moment().format()
     };
 
     pendingFriendsTU.push(TUFriend);
 
     const friendsTarget = {
+        sentRequests: sentRequestsTU,
         pending: pendingFriendsTU,
-        approved: approvedFriendsTU
+        accepted: acceptedFriendsTU
     };
 
     /** Adatok mentése az adatbázisba */
 
     await user.updateOne({ friends: friendsCurrent });
     await targetUser.updateOne({ friends: friendsTarget });
+
+    return res.status(200).send();
+});
+
+router.patch('/acceptFriend', auth, async (req: Request, res: Response) => {
+    const currentUserId = req.user.toString();
+    const { senderUserId } = req.body;
+
+    /** Adatok ellenőrzése */
+    if (!senderUserId) {
+        return res.status(400).json({
+            errorMessage: 'Érvénytelen kérés.'
+        });
+    }
+
+    if (!isValidObjectId(senderUserId)) {
+        return res.status(400).json({
+            errorMessage: 'A poszt azonosító nem érvényes.'
+        });
+    }
+
+    /** Fogadó fél */
+    /** CU: currentUser */
+
+    const currentUser = await User.findOne({ _id: currentUserId });
+    if (!currentUser) {
+        return res.status(401).json({
+            errorMessage: 'Hozzáférés megtagadva.'
+        });
+    }
+
+    const sentRequestsCU: Array<IFriend> = currentUser.friends.sentRequests;
+    const pendingFriendsCU: Array<IFriend> = currentUser.friends.pending;
+    const acceptedFriendsCU: Array<IFriend> = currentUser.friends.accepted;
+
+    let CUFriend: IFriend = {
+        userId: '',
+        friendSince: moment().format()
+    };
+    pendingFriendsCU.forEach((friend) => {
+        if (friend.userId == senderUserId) {
+            CUFriend.userId = friend.userId;
+        }
+    });
+
+    if (CUFriend.userId == '') {
+        return res.status(400).json({
+            errorMessage: 'Nem létezik barátkérelem ilyen azonosítóval.'
+        });
+    }
+
+    const CUFriendIndex = pendingFriendsCU.indexOf(CUFriend);
+    pendingFriendsCU.splice(CUFriendIndex, 1);
+
+    acceptedFriendsCU.push(CUFriend);
+
+    const friendsCurrent = {
+        sentRequests: sentRequestsCU,
+        pending: pendingFriendsCU,
+        accepted: acceptedFriendsCU
+    };
+
+    /** Küldő fél */
+    /** SU: senderUser */
+
+    const senderUser = await User.findOne({ _id: senderUserId });
+    if (!senderUser) {
+        return res.status(202).json({
+            errorMessage: 'A barátkérelmet küldő fiók már nem létezik.'
+        });
+    }
+
+    const sentRequestsSU: Array<IFriend> = senderUser.friends.sentRequests;
+    const pendingFriendsSU: Array<IFriend> = senderUser.friends.pending;
+    const acceptedFriendsSU: Array<IFriend> = senderUser.friends.accepted;
+
+    let SUFriend: IFriend = {
+        userId: '',
+        friendSince: moment().format()
+    };
+    sentRequestsSU.forEach((friend) => {
+        if (friend.userId == currentUserId) {
+            SUFriend.userId = friend.userId;
+        }
+    });
+
+    if (SUFriend.userId == '') {
+        return res.status(202).json({
+            errorMessage: 'A barátkérelem már nem érvényes.'
+        });
+    }
+
+    const SUFriendIndex = sentRequestsSU.indexOf(SUFriend);
+    sentRequestsSU.splice(SUFriendIndex, 1);
+
+    acceptedFriendsSU.push(SUFriend);
+
+    const friendsSender = {
+        sentRequests: sentRequestsSU,
+        pending: pendingFriendsSU,
+        accepted: acceptedFriendsSU
+    };
+
+    /** Adatok mentése az adatbázisba */
+
+    await currentUser.updateOne({ friends: friendsCurrent });
+    await senderUser.updateOne({ friends: friendsSender });
 
     return res.status(200).send();
 });

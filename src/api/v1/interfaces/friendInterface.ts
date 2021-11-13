@@ -1,4 +1,5 @@
 export interface IFriend {
     userId: string;
-    type: string;
+    requestSent?: string;
+    friendSince?: string;
 }

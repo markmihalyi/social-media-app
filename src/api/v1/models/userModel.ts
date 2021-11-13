@@ -6,15 +6,25 @@ const userSchema = new mongoose.Schema(
         username: { type: String, required: true },
         passwordHash: { type: String, required: true },
         friends: {
-            pending: [
+            sentRequests: [
                 {
-                    userId: { type: String }
+                    _id: false,
+                    userId: { type: String, required: true },
+                    requestSent: { type: String, required: true }
                 }
             ],
-            approved: [
+            pending: [
                 {
-                    userId: { type: String },
-                    friendSince: { type: String }
+                    _id: false,
+                    userId: { type: String, required: true },
+                    requestSent: { type: String, required: true }
+                }
+            ],
+            accepted: [
+                {
+                    _id: false,
+                    userId: { type: String, required: true },
+                    friendSince: { type: String, required: true }
                 }
             ]
         }
