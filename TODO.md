@@ -5,10 +5,11 @@
 ### In Progress
 
 -   Friend system:
-    - [x] Get a user's friend list (getFriends)
-    - [x] Send friend request to a user (addFriend)
-    - [ ] Accept friend request (acceptFriend)
-    - [ ] Deny friend request (denyFriend)
+    - [x] Get a user's friend list (GET: list)
+    - [x] Send friend request to a user (POST: request)
+    - [X] Cancel friend request (DELETE: request) 
+    - [X] Accept friend request (PUT: accept)
+    - [ ] Decline friend request (PUT: decline)
 
 ### Done ✓
 
