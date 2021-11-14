@@ -21,6 +21,10 @@ const NAMESPACE = 'USER';
  * FRIEND *
  *********/
 
+// TODO:
+// Ha a saját id-d kerül be a json body-ba, akkor kezelje le külön,
+// hogy nem adhatod meg a saját id-d. Mindenhol!
+
 // * Kizárólag tesztelésre van, normális működésnél ki kell commentelni.
 router.get('/friend/debug-list/:userId', async (req: Request, res: Response) => {
     const { userId } = req.params;
@@ -99,7 +103,7 @@ router.post('/friend/request', auth, async (req: Request, res: Response) => {
 
     if (targetUserId == currentUserId) {
         return res.status(400).json({
-            errorMessage: 'Magadat nem jelölheted meg ismerősnek. :('
+            errorMessage: 'A saját fiók azonosítódat nem adhatod meg.'
         });
     }
 
@@ -190,7 +194,112 @@ router.post('/friend/request', auth, async (req: Request, res: Response) => {
     return res.status(200).send();
 });
 
-router.delete('/friend/request', async (req: Request, res: Response) => {});
+router.delete('/friend/request', auth, async (req: Request, res: Response) => {
+    const currentUserId = req.user.toString();
+    const { targetUserId } = req.body;
+
+    /** Adatok ellenőrzése */
+    if (!targetUserId) {
+        return res.status(400).json({
+            errorMessage: 'Érvénytelen kérés.'
+        });
+    }
+
+    if (!isValidObjectId(targetUserId)) {
+        return res.status(400).json({
+            errorMessage: 'A poszt azonosító nem érvényes.'
+        });
+    }
+
+    if (targetUserId == currentUserId) {
+        return res.status(400).json({
+            errorMessage: 'A saját fiók azonosítódat nem adhatod meg.'
+        });
+    }
+
+    /** Küldő fél */
+    /** CU: currentUser */
+    const currentUser = await User.findOne({ _id: currentUserId });
+    if (!currentUser) {
+        return res.status(401).json({
+            errorMessage: 'Hozzáférés megtagadva.'
+        });
+    }
+
+    const sentRequestsCU: Array<IFriend> = currentUser.friends.sentRequests;
+    const pendingFriendsCU: Array<IFriend> = currentUser.friends.pending;
+    const acceptedFriendsCU: Array<IFriend> = currentUser.friends.accepted;
+
+    let alreadyFriend = false;
+    acceptedFriendsCU.forEach((friend) => {
+        if (friend.userId == targetUserId) {
+            alreadyFriend = true;
+        }
+    });
+    if (alreadyFriend) {
+        return res.status(400).json({
+            errorMessage: 'Ez a személy már a barátod.'
+        });
+    }
+
+    let indexCU = 0;
+    sentRequestsCU.forEach((friend) => {
+        if (friend.userId == targetUserId) {
+            return;
+        }
+        indexCU++;
+    });
+
+    sentRequestsCU.splice(indexCU, 1);
+
+    const friendsCurrent = {
+        sentRequests: sentRequestsCU,
+        pendingFriends: pendingFriendsCU,
+        acceptedFriends: acceptedFriendsCU
+    };
+
+    /** Fogadó fél */
+    /** TU: targetUser */
+    const targetUser = await User.findOne({ _id: targetUserId });
+    if (!targetUser) {
+        return res.status(401).json({
+            errorMessage: 'Hozzáférés megtagadva.'
+        });
+    }
+
+    const sentRequestsTU: Array<IFriend> = currentUser.friends.sentRequests;
+    const pendingFriendsTU: Array<IFriend> = currentUser.friends.pending;
+    const acceptedFriendsTU: Array<IFriend> = currentUser.friends.accepted;
+
+    let indexTU = 0;
+    pendingFriendsTU.forEach((friend) => {
+        if (friend.userId == currentUserId) {
+            return;
+        }
+        indexTU++;
+    });
+
+    if (indexTU > pendingFriendsTU.length) {
+        return res.status(400).json({
+            errorMessage: 'Nem küldtél még barátkérelmet ennek a személynek.'
+        });
+    }
+
+    pendingFriendsTU.splice(indexTU, 1);
+
+    const friendsTarget = {
+        sentRequests: sentRequestsTU,
+        pendingFriends: pendingFriendsTU,
+        acceptedFriends: acceptedFriendsTU
+    };
+
+    /** Adatok mentése az adatbázisba */
+
+    await currentUser.updateOne({ friends: friendsCurrent });
+    await targetUser.updateOne({ friends: friendsTarget });
+
+    return res.status(200).send();
+});
 
 router.put('/friend/accept', auth, async (req: Request, res: Response) => {
     const currentUserId = req.user.toString();
@@ -206,6 +315,12 @@ router.put('/friend/accept', auth, async (req: Request, res: Response) => {
     if (!isValidObjectId(senderUserId)) {
         return res.status(400).json({
             errorMessage: 'A poszt azonosító nem érvényes.'
+        });
+    }
+
+    if (senderUserId == currentUserId) {
+        return res.status(400).json({
+            errorMessage: 'A saját fiók azonosítódat nem adhatod meg.'
         });
     }
 
@@ -299,8 +414,14 @@ router.put('/friend/accept', auth, async (req: Request, res: Response) => {
     return res.status(200).send();
 });
 
-router.delete('/friend/decline/:id', async (req: Request, res: Response) => {
-    const senderUserId = req.params.id;
+// TODO
+router.delete('/friend/decline', async (req: Request, res: Response) => {
+    const { senderUserId } = req.body;
+});
+
+// TODO
+router.delete('/friend/remove', async (req: Request, res: Response) => {
+    const { targetUserId } = req.body;
 });
 
 /************
