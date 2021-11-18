@@ -17,6 +17,17 @@ const router = Router();
 
 const NAMESPACE = 'USER';
 
+
+
+
+// MEGJEGYZÉS:
+// Ez a projekt elrendezés nem követendő példa, a 'business logic'-ot itt még teljesen ide
+// írtam bele, viszont az átláthatóság szempontjából ez nagyon rossz. Azért csináltam így, mert még kevesebb tapasztalattal rendelkeztem.
+
+
+
+
+
 /**********
  * FRIEND *
  *********/
